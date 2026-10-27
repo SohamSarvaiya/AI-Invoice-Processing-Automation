@@ -1,0 +1,352 @@
+{
+  "name": "AI Invoice Processing",
+  "nodes": [
+    {
+      "id": "n1",
+      "name": "Invoice email arrives",
+      "type": "n8n-nodes-base.emailReadImap",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "mailbox": "INBOX",
+        "postProcessAction": "read",
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "credentials": {
+        "imap": {
+          "id": "REPLACE_ME",
+          "name": "IMAP account"
+        }
+      }
+    },
+    {
+      "id": "n2",
+      "name": "Send to Invoice API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.INVOICE_API_URL }}/invoices/upload",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.INVOICE_API_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "attachment_0"
+            },
+            {
+              "name": "source",
+              "value": "email"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n3",
+      "name": "Needs fixing?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        520,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "PENDING_APPROVAL",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "n4",
+      "name": "Alert: invoice needs review",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        800,
+        -100
+      ],
+      "parameters": {
+        "fromEmail": "invoices@your-company.com",
+        "toEmail": "accounts@your-company.com",
+        "subject": "=Invoice needs review: {{ $json.file_name }} ({{ $json.status }})",
+        "emailFormat": "text",
+        "text": "=File: {{ $json.file_name }}\nStatus: {{ $json.status }}\nIssues:\n{{ ($json.validation_issues || []).map(i => '- ' + i.message).join('\\n') }}\n\nOpen {{ $env.INVOICE_API_URL }}/docs -> POST /invoices/{{ $json.id }}/correct | /approve | /reject"
+      },
+      "credentials": {
+        "smtp": {
+          "id": "REPLACE_ME",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "id": "n5",
+      "name": "Notify: ready for approval",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        800,
+        100
+      ],
+      "parameters": {
+        "fromEmail": "invoices@your-company.com",
+        "toEmail": "accounts@your-company.com",
+        "subject": "=Invoice ready for approval: {{ $json.invoice_number }} - {{ $json.vendor_name }}",
+        "emailFormat": "text",
+        "text": "=Vendor: {{ $json.vendor_name }}\nInvoice: {{ $json.invoice_number }} dated {{ $json.invoice_date }}\nTotal: {{ $json.currency }} {{ $json.total_amount }}\nAll automatic checks passed. Please approve: POST /invoices/{{ $json.id }}/approve"
+      },
+      "credentials": {
+        "smtp": {
+          "id": "REPLACE_ME",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "id": "n6",
+      "name": "Every day 6 pm",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "triggerAtHour": 18
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n7",
+      "name": "Get daily report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.INVOICE_API_URL }}/reports/summary",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.INVOICE_API_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "n8",
+      "name": "Email daily report",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        520,
+        300
+      ],
+      "parameters": {
+        "fromEmail": "invoices@your-company.com",
+        "toEmail": "accounts@your-company.com",
+        "subject": "Daily invoice processing report",
+        "emailFormat": "text",
+        "text": "=Invoices: {{ $json.total_invoices }}\nStatus: {{ JSON.stringify($json.by_status) }}\nStraight-through rate: {{ Math.round($json.straight_through_rate * 100) }}%\nDuplicates caught: {{ $json.duplicates_detected }}\nApproved amount: {{ JSON.stringify($json.approved_amount) }}\nAwaiting approval: {{ JSON.stringify($json.awaiting_approval_amount) }}\nEstimated time saved: {{ $json.time_saved.hours_saved }} hours ({{ $json.time_saved.percent_saved }}%)"
+      },
+      "credentials": {
+        "smtp": {
+          "id": "REPLACE_ME",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "id": "n9",
+      "name": "Every hour",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        560
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n10",
+      "name": "Retry FAILED invoices",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        560
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.INVOICE_API_URL }}/invoices/retry-failed",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.INVOICE_API_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Invoice email arrives": {
+      "main": [
+        [
+          {
+            "node": "Send to Invoice API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send to Invoice API": {
+      "main": [
+        [
+          {
+            "node": "Needs fixing?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs fixing?": {
+      "main": [
+        [
+          {
+            "node": "Alert: invoice needs review",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify: ready for approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every day 6 pm": {
+      "main": [
+        [
+          {
+            "node": "Get daily report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get daily report": {
+      "main": [
+        [
+          {
+            "node": "Email daily report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every hour": {
+      "main": [
+        [
+          {
+            "node": "Retry FAILED invoices",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

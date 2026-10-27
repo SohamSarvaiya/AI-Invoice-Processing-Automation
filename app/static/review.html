@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Invoice Review</title>
+<style>
+:root{--bg:#f3f4fb;--card:#fff;--text:#1b2033;--mut:#6b7392;--line:#e6e8f2;--soft:#f6f7fc;--pri:#5b5bf0;--pri2:#8a5cf6;--ok:#12a150;--warn:#d9822b;--err:#e0364a;--sh:0 4px 20px rgba(40,50,120,.08)}
+@media (prefers-color-scheme:dark){:root{--bg:#0e1020;--card:#171a2e;--text:#eceefb;--mut:#9aa1c3;--line:#272b45;--soft:#1d2140;--pri:#7c7cff;--pri2:#a07bff;--ok:#3ecf86;--warn:#f2a65a;--err:#ff6b7d;--sh:0 4px 24px rgba(0,0,0,.35)}}
+*{box-sizing:border-box}body{margin:0;font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
+button{font:inherit;cursor:pointer;transition:.15s}
+header{background:linear-gradient(120deg,var(--pri),var(--pri2));color:#fff;padding:18px 24px 64px}
+.top{max-width:1240px;margin:auto;display:flex;align-items:center;gap:14px}
+.logo{width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.2);display:grid;place-items:center;font-size:20px}
+.top h1{margin:0;font-size:19px}.top p{margin:0;opacity:.8;font-size:12px}.sp{flex:1}
+.chip{background:rgba(255,255,255,.18);padding:6px 12px;border-radius:99px;font-size:13px}
+.ghost{background:rgba(255,255,255,.18);border:0;color:#fff;padding:7px 13px;border-radius:99px}.ghost:hover{background:rgba(255,255,255,.3)}
+.stats{max-width:1240px;margin:-44px auto 18px;padding:0 24px;display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px}
+.stat{background:var(--card);border-radius:14px;padding:14px 16px;box-shadow:var(--sh);display:flex;gap:12px;align-items:center}
+.ic{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;font-size:18px;background:var(--soft)}
+.stat small{color:var(--mut);display:block;font-size:12px}.stat b{font-size:21px}
+main{max-width:1240px;margin:auto;padding:0 24px 40px;display:grid;grid-template-columns:370px 1fr;gap:18px;align-items:start}
+@media(max-width:860px){main{grid-template-columns:1fr}}
+.panel{background:var(--card);border-radius:16px;box-shadow:var(--sh);overflow:hidden}
+.tabs{display:flex;gap:6px;padding:12px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.tab{border:0;background:var(--soft);color:var(--mut);padding:5px 11px;border-radius:99px;font-size:12px}.tab.on{background:var(--pri);color:#fff}
+#list{max-height:70vh;overflow:auto}
+.row{display:flex;gap:12px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line);cursor:pointer;border-left:3px solid transparent}
+.row:hover{background:var(--soft)}.row.sel{background:var(--soft);border-left-color:var(--pri)}
+.av{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-weight:700;color:#fff;flex:none;background:var(--pri)}
+.row .m{flex:1;min-width:0}.row b,.row small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.row small{color:var(--mut);font-size:12px}
+.amt{text-align:right;font-weight:600;font-size:13px}
+.pill{display:inline-block;font-size:11px;font-weight:600;padding:2px 9px;border-radius:99px;background:color-mix(in srgb,currentColor 14%,transparent)}
+.PENDING_APPROVAL{color:var(--pri)}.NEEDS_REVIEW{color:var(--warn)}.FAILED,.REJECTED{color:var(--err)}.APPROVED{color:var(--ok)}
+.empty{padding:48px 24px;text-align:center;color:var(--mut)}.empty .big{font-size:38px;display:block;margin-bottom:6px}
+#detail{padding:0}.dh{padding:20px 22px;border-bottom:1px solid var(--line);display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+.dh h2{margin:0;font-size:18px}.dh small{color:var(--mut)}.big-amt{font-size:26px;font-weight:700;text-align:right}
+.body{padding:20px 22px}.body h3{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin:18px 0 8px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+label{font-size:12px;color:var(--mut);display:block;margin-bottom:3px}
+input.f{width:100%;padding:9px 11px;border:1.5px solid var(--line);border-radius:10px;background:var(--soft);color:var(--text);font:inherit;outline:0}
+input.f:focus{border-color:var(--pri)}input.f.changed{border-color:var(--pri);background:color-mix(in srgb,var(--pri) 8%,var(--soft))}input.f:disabled{opacity:.6}
+.issue{display:flex;gap:10px;padding:10px 12px;border-radius:10px;margin:6px 0;background:color-mix(in srgb,var(--warn) 11%,transparent)}
+.issue.error{background:color-mix(in srgb,var(--err) 11%,transparent)}.issue.ok{background:color-mix(in srgb,var(--ok) 12%,transparent)}
+.issue code{display:block;font-size:11px;color:var(--mut)}
+.bar{position:sticky;bottom:0;display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px 22px;background:var(--card);border-top:1px solid var(--line)}
+.btn{border:1.5px solid var(--line);background:var(--card);color:var(--text);padding:9px 16px;border-radius:10px;font-weight:600}.btn:hover{background:var(--soft)}
+.btn.p{background:linear-gradient(120deg,var(--pri),var(--pri2));color:#fff;border:0}.btn.g{background:var(--ok);color:#fff;border:0}.btn.d{color:var(--err)}
+.bar .f{width:190px}.chk{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--mut)}
+details{margin-top:12px;background:var(--soft);border-radius:10px;padding:10px 12px}summary{cursor:pointer;color:var(--mut);font-weight:600}
+pre{white-space:pre-wrap;font-size:12px;max-height:240px;overflow:auto;margin:8px 0 0}
+#msg{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);max-width:92vw;padding:11px 18px;border-radius:12px;background:var(--text);color:var(--bg);box-shadow:var(--sh);display:none;z-index:9}
+#login{position:fixed;inset:0;background:linear-gradient(120deg,var(--pri),var(--pri2));display:grid;place-items:center;z-index:5;padding:16px}
+#login .box{background:var(--card);border-radius:20px;padding:30px;width:100%;max-width:380px;box-shadow:var(--sh)}
+#login h2{margin:8px 0 4px}#login p{color:var(--mut);margin:0 0 16px}#login .f{margin-bottom:12px}
+#ai-modal{position:fixed;inset:0;background:rgba(10,12,30,.55);display:grid;place-items:center;z-index:8;padding:16px}
+#ai-modal[hidden]{display:none}
+#ai-modal .box{background:var(--card);border-radius:18px;padding:24px;width:100%;max-width:460px;box-shadow:var(--sh);max-height:92vh;overflow:auto}
+#ai-modal h2{margin:0 0 4px}#ai-modal p{color:var(--mut);margin:0 0 14px;font-size:13px}#ai-modal .f{margin-bottom:12px}
+select.f{width:100%;padding:9px 11px;border:1.5px solid var(--line);border-radius:10px;background:var(--soft);color:var(--text);font:inherit;outline:0}
+#ai-modal .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+#ai-status{margin:4px 0 10px}#ai-status:empty{display:none}
+</style>
+</head>
+<body>
+<div id="login"><div class="box"><div class="logo" style="background:var(--soft)">🧾</div><h2>Invoice Review</h2><p>Sign in to review and approve invoices.</p>
+<label>API key</label><input id="key" class="f" type="password" autocomplete="off"><label>Your name</label><input id="who" class="f">
+<button id="go" class="btn p" style="width:100%">Open review queue</button></div></div>
+<header><div class="top"><div class="logo">🧾</div><div><h1>Invoice Review</h1><p>AI reads. Code checks. You decide.</p></div><span class="sp"></span><span class="chip" id="user"></span><button class="ghost" id="cfg" title="Choose the AI that reads invoices">⚙ <span id="ai">AI settings</span></button><button class="ghost" id="up">⬆ Upload invoice</button><input type="file" id="files" multiple accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,.txt" hidden><button class="ghost" id="reload">↻ Refresh</button><button class="ghost" id="out">Sign out</button></div></header>
+<section class="stats" id="stats"></section>
+<main>
+  <div class="panel"><div class="tabs" id="tabs"></div><div id="list"></div></div>
+  <div class="panel" id="detail"><div class="empty"><span class="big">👈</span>Select an invoice to review it.</div></div>
+</main>
+<div id="ai-modal" hidden><div class="box">
+  <h2>AI engine</h2>
+  <p>Paste the client's key to read invoices with their AI. It is kept in server memory only (never saved to disk) and is forgotten when the server restarts.</p>
+  <label>Provider</label>
+  <select id="ai-prov" class="f"><option value="anthropic">Claude (Anthropic)</option><option value="openai">ChatGPT (OpenAI)</option><option value="gemini">Gemini (Google)</option></select>
+  <label>API key</label><input id="ai-key" class="f" type="password" autocomplete="off" placeholder="Paste key (blank = use the key from .env)">
+  <label>Model</label><input id="ai-model" class="f" list="ai-models" placeholder="Click “Load models”, or type a model id"><datalist id="ai-models"></datalist>
+  <div id="ai-status"></div>
+  <div class="acts"><button id="ai-load" class="btn">Load models</button><button id="ai-save" class="btn p">Save &amp; test</button><button id="ai-clear" class="btn d">Remove pasted key</button><button id="ai-close" class="btn">Close</button></div>
+</div></div>
+<div id="msg"></div>
+<script>
+const $=s=>document.querySelector(s);
+const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const money=(c,v)=>v==null||v===""?"–":esc(c||"")+" "+Number(v).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2});
+const label=s=>s.replace(/_/g," ").toLowerCase().replace(/^./,c=>c.toUpperCase());
+const FIELDS=[["invoice_number","Invoice no."],["invoice_date","Date (DD/MM/YYYY)"],["vendor_name","Vendor"],["vendor_gstin","Vendor GSTIN"],["subtotal","Subtotal"],["tax_amount","Tax"],["total_amount","Total"]];
+const TABS=[["ALL","All"],["FAILED","Failed"],["NEEDS_REVIEW","Needs review"],["PENDING_APPROVAL","Ready to approve"]];
+const COLORS=["#5b5bf0","#12a150","#d9822b","#e0364a","#0ea5c6","#8a5cf6"];
+let current=null,queue=[],tab="ALL";
+$("#key").value=sessionStorage.getItem("key")||"";$("#who").value=localStorage.getItem("who")||"";
+
+function toast(t){const m=$("#msg");m.textContent=t;m.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(()=>m.style.display="none",5000)}
+async function api(path,opt={}){
+  const r=await fetch(path,{...opt,headers:{"X-API-Key":$("#key").value,...(opt.body&&!(opt.body instanceof FormData)?{"Content-Type":"application/json"}:{})}});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok){const d=j.detail;throw new Error(typeof d==="string"?d:d?.message?d.message+(d.blocking_codes?" ["+d.blocking_codes.join(", ")+"]":""):r.status===401?"Invalid API key":"Error "+r.status)}
+  return j;
+}
+function renderTabs(){$("#tabs").innerHTML=TABS.map(([k,l])=>{const n=k==="ALL"?queue.length:queue.filter(i=>i.status===k).length;return `<button class="tab ${tab===k?"on":""}" data-t="${k}">${l} · ${n}</button>`}).join("");
+  document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{tab=b.dataset.t;renderTabs();renderList()})}
+function renderList(){
+  const rows=queue.filter(i=>tab==="ALL"||i.status===tab);
+  $("#list").innerHTML=rows.length?rows.map(i=>{const v=i.vendor_name||"?";const errs=(i.validation_issues||[]).filter(x=>x.severity==="error").length;
+    return `<div class="row ${current===i.id?"sel":""}" data-id="${i.id}"><div class="av" style="background:${COLORS[v.charCodeAt(0)%COLORS.length]}">${esc(v[0].toUpperCase())}</div><div class="m"><b>${esc(i.invoice_number||i.file_name)}</b><small>#${i.id} · ${esc(v)}</small><span class="pill ${i.status}">${label(i.status)}${errs?" · "+errs+" issue"+(errs>1?"s":""):""}</span></div><div class="amt">${money(i.currency,i.total_amount)}</div></div>`}).join(""):'<div class="empty"><span class="big">🎉</span>Nothing waiting here.<br><small>Click “Upload invoice” to add one.</small></div>';
+  document.querySelectorAll(".row").forEach(r=>r.onclick=()=>openInvoice(+r.dataset.id));
+}
+async function load(){
+  sessionStorage.setItem("key",$("#key").value);localStorage.setItem("who",$("#who").value);
+  try{
+    const [q,s]=await Promise.all([api("/invoices/review-queue"),api("/reports/summary")]);
+    queue=q;$("#login").style.display="none";$("#user").textContent="👤 "+($("#who").value||"reviewer");
+    const t=s.time_saved;
+    $("#stats").innerHTML=[["📥","Invoices processed",s.total_invoices],["⚡","Straight-through",Math.round(s.straight_through_rate*100)+"%"],["🛡️","Duplicates caught",s.duplicates_detected],["⏱️","Hours saved (est.)",t.hours_saved]].map(([i,a,b])=>`<div class="stat"><div class="ic">${i}</div><div><small>${a}</small><b>${esc(b)}</b></div></div>`).join("");
+    renderTabs();renderList();aiRefresh();
+  }catch(e){toast(e.message)}
+}
+async function openInvoice(id){try{current=id;const i=await api("/invoices/"+id);render(i);renderList()}catch(e){toast(e.message)}}
+function render(i){
+  const ic={error:"⛔",warning:"⚠️"};
+  const issues=(i.validation_issues||[]).map(x=>`<div class="issue ${x.severity}"><span>${ic[x.severity]||"•"}</span><div>${esc(x.message)}<code>${esc(x.code)}</code></div></div>`).join("")||'<div class="issue ok"><span>✅</span><div>All automatic checks passed.</div></div>';
+  const canEdit=["NEEDS_REVIEW","PENDING_APPROVAL"].includes(i.status);
+  $("#detail").innerHTML=`<div class="dh"><div style="flex:1"><h2>${esc(i.vendor_name||i.file_name)}</h2><small>${esc(i.file_name)} · #${i.id} · via ${esc(i.source)} · ${esc(i.extraction_method||"-")} · attempt ${i.attempts}</small></div><div><span class="pill ${i.status}">${label(i.status)}</span><div class="big-amt">${money(i.currency,i.total_amount)}</div></div></div>
+  <div class="body">${i.error_message?`<div class="issue error"><span>⛔</span><div>${esc(i.error_message)}</div></div>`:""}
+  ${i.duplicate_of_id?`<div class="issue"><span>🔁</span><div>Possible duplicate of invoice #${i.duplicate_of_id}.</div></div>`:""}
+  <h3>Automatic checks</h3>${issues}<h3>Invoice details</h3>
+  <div class="grid">${FIELDS.map(([k,l])=>`<div><label>${l}</label><input class="f" data-k="${k}" data-orig="${esc(i[k]??"")}" value="${esc(i[k]??"")}" ${canEdit?"":"disabled"}></div>`).join("")}</div>
+  <details><summary>Document text (OCR)</summary><pre>${esc(i.raw_text||"")}</pre></details>
+  <details><summary>Audit trail</summary><pre>${esc(JSON.stringify(i.corrections||[],null,2))}</pre></details></div>
+  <div class="bar">${canEdit?'<button id="save" class="btn p">Save &amp; re-check</button><button id="ok" class="btn g">✓ Approve</button><input class="f" id="note" placeholder="Note (optional)"><label class="chk"><input type="checkbox" id="force"> force approve</label>':""}
+  ${["FAILED","NEEDS_REVIEW"].includes(i.status)?'<button id="retry" class="btn">↻ Retry</button>':""}
+  ${!["APPROVED","REJECTED"].includes(i.status)?'<span class="sp" style="flex:1"></span><button id="no" class="btn d">Reject</button>':""}</div>`;
+  document.querySelectorAll("input.f[data-k]").forEach(el=>el.oninput=()=>el.classList.toggle("changed",el.value!==el.dataset.orig));
+  const who=()=>{const w=$("#who").value.trim();if(!w){toast("Enter your name first");throw 0}return w};
+  const act=async(path,body,msg)=>{try{await api(`/invoices/${i.id}/${path}`,{method:"POST",body:JSON.stringify(body)});toast(msg);await load();openInvoice(i.id)}catch(e){if(e)toast(e.message)}};
+  if($("#save"))$("#save").onclick=()=>{let w;try{w=who()}catch{return}const b={reviewer:w};document.querySelectorAll("input.f[data-k]").forEach(el=>{if(el.value!==el.dataset.orig)b[el.dataset.k]=el.value});if(Object.keys(b).length===1)return toast("No changes to save");act("correct",b,"Saved and re-validated")};
+  if($("#ok"))$("#ok").onclick=()=>{let w;try{w=who()}catch{return}act("approve",{reviewer:w,force:$("#force").checked,note:$("#note").value},"Approved ✓")};
+  if($("#no"))$("#no").onclick=()=>{let w;try{w=who()}catch{return}const r=prompt("Reason for rejection?");if(r)act("reject",{reviewer:w,reason:r},"Rejected")};
+  if($("#retry"))$("#retry").onclick=()=>act("retry",{},"Reprocessed");
+}
+
+let aiCfg=null;
+function aiStatus(html,kind){const e=$("#ai-status");e.className=html?"issue "+(kind||""):"";e.innerHTML=html?"<div>"+html+"</div>":""}
+async function aiRefresh(){
+  try{aiCfg=await api("/settings/llm");const a=aiCfg.active;
+    $("#ai").textContent=a?a.label+" · "+a.model:(aiCfg.extraction_mode==="llm"?"No AI key!":"Offline rules");
+  }catch(e){}
+}
+function aiDefaultModel(){const p=(aiCfg?.providers||[]).find(x=>x.id===$("#ai-prov").value);return p?p.default_model:""}
+$("#cfg").onclick=async()=>{
+  await aiRefresh();const a=aiCfg?.active;
+  if(a){$("#ai-prov").value=a.provider;$("#ai-model").value=a.model}else $("#ai-model").value=aiDefaultModel();
+  $("#ai-key").value="";aiStatus(a?`Active: <b>${esc(a.label)}</b> · ${esc(a.model)} · key ${esc(a.key_hint)} (${a.source==="ui"?"pasted here":"from .env"})`:"Not configured: invoices are read by the offline rule-based extractor.");
+  if(aiCfg?.extraction_mode==="rules")aiStatus("EXTRACTION_MODE=rules in .env forces offline mode. Set it to <b>auto</b> and restart.","");
+  $("#ai-modal").hidden=false};
+$("#ai-close").onclick=()=>{$("#ai-modal").hidden=true};
+$("#ai-prov").onchange=()=>{$("#ai-model").value=aiDefaultModel();$("#ai-models").innerHTML="";aiStatus("")};
+$("#ai-load").onclick=async()=>{
+  aiStatus("Loading models…");
+  try{const r=await api("/settings/llm/models",{method:"POST",body:JSON.stringify({provider:$("#ai-prov").value,api_key:$("#ai-key").value})});
+    $("#ai-models").innerHTML=r.models.map(m=>`<option value="${esc(m)}">`).join("");
+    aiStatus(`✅ Key works. ${r.models.length} models available: click the Model box to choose.`,"ok")}
+  catch(e){aiStatus("⛔ "+esc(e.message),"error")}};
+$("#ai-save").onclick=async()=>{
+  aiStatus("Saving and testing with a sample invoice…");
+  try{await api("/settings/llm",{method:"PUT",body:JSON.stringify({provider:$("#ai-prov").value,api_key:$("#ai-key").value,model:$("#ai-model").value})});
+    $("#ai-key").value="";await aiRefresh();
+    const t=await api("/settings/llm/test",{method:"POST",body:"{}"});
+    if(t.ok)aiStatus(`✅ ${esc(PROV[t.provider])} answered in ${t.seconds}s and read invoice <b>${esc(t.fields.invoice_number)}</b>, total <b>${esc(t.fields.total_amount)}</b>. New uploads will use it.`,"ok");
+    else aiStatus("⛔ Saved, but the test call failed: "+esc(t.error),"error")}
+  catch(e){aiStatus("⛔ "+esc(e.message),"error")}};
+$("#ai-clear").onclick=async()=>{try{await api("/settings/llm",{method:"DELETE"});await aiRefresh();aiStatus("Pasted key removed.","ok")}catch(e){aiStatus("⛔ "+esc(e.message),"error")}};
+const PROV={anthropic:"Claude",openai:"ChatGPT",gemini:"Gemini"};
+$("#go").onclick=()=>{if(!$("#key").value||!$("#who").value.trim())return toast("Enter API key and your name");load()};
+$("#reload").onclick=load;
+$("#up").onclick=()=>$("#files").click();
+$("#files").onchange=async e=>{
+  const fs=[...e.target.files];e.target.value="";let ok=0,last=null;const bad=[];
+  for(const f of fs){
+    try{const fd=new FormData();fd.append("file",f);fd.append("source","review-ui");
+      last=await api("/invoices/upload",{method:"POST",body:fd});ok++}
+    catch(err){bad.push(f.name+": "+err.message)}
+  }
+  await load();
+  if(last)openInvoice(last.id);
+  toast((ok?"Uploaded "+ok+" invoice"+(ok>1?"s":""):"")+(bad.length?(ok?" · ":"")+bad.join(" | "):""));
+};
+$("#out").onclick=()=>{sessionStorage.removeItem("key");location.reload()};
+if($("#key").value&&$("#who").value)load();
+</script>
+</body>
+</html>

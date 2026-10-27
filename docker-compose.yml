@@ -1,0 +1,39 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: invoices
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_DB: invoices
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U invoices"]
+      interval: 5s
+      retries: 10
+
+  api:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://invoices:${POSTGRES_PASSWORD:-change-me}@db:5432/invoices
+      STORAGE_DIR: /data/storage
+    depends_on:
+      db: {condition: service_healthy}
+    volumes: [invoice_files:/data/storage]
+    ports: ["8000:8000"]
+
+  n8n:
+    image: n8nio/n8n:latest
+    environment:
+      - GENERIC_TIMEZONE=Asia/Kolkata
+      - INVOICE_API_URL=http://api:8000
+      - INVOICE_API_KEY=${API_KEY}
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+    ports: ["5678:5678"]
+    volumes: [n8n_data:/home/node/.n8n]
+    depends_on: [api]
+
+volumes:
+  pgdata:
+  invoice_files:
+  n8n_data:
